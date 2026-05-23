@@ -40,15 +40,11 @@
 
 <script>
 const DAYS = ['월','화','수','목','금'];
-
-// 💡 수정된 부분: 선생님의 훌륭한 아이디어를 반영하여 '오전'만 명시하고 나머지는 숫자로만 깔끔하게 정리했습니다.
 const SLOTS = [
   '오전9-10시', '오전10-11시', '오전11-12시', '12-1시', 
   '1-2시', '2-3시', '3-4시', '4-5시', 
   '5-6시', '5-7시', '6-7시', '7-8시', '7-9시', '8-9시', '9-10시'
 ];
-
-const TODAY_IDX = new Date().getDay() - 1;
 
 async function load() {
   try {
@@ -87,10 +83,21 @@ async function load() {
       }
     });
 
+    // 💡 수정된 부분: 오늘이 주말인지 평일인지 똑똑하게 구별하는 인공지능 로직 추가
     document.getElementById('total').textContent = students.length;
     document.getElementById('weekly').textContent = weekTotal;
-    const todayDay = DAYS[TODAY_IDX] || '월';
-    document.getElementById('today').textContent = students.filter(s => s[todayDay]).length;
+    
+    const currentDayNum = new Date().getDay(); // 0:일, 1:월, 2:화, 3:수, 4:목, 5:금, 6:토
+    let todayClassCount = 0;
+    
+    // 만약 오늘이 월~금(1~5) 사이라면 정확한 요일의 수업 개수를 센다.
+    if (currentDayNum >= 1 && currentDayNum <= 5) {
+      const todayStr = DAYS[currentDayNum - 1];
+      todayClassCount = students.filter(s => s[todayStr]).length;
+    } 
+    // 토, 일요일이면 자동으로 0이 출력된다.
+    
+    document.getElementById('today').textContent = todayClassCount;
 
   } catch(e) {
     document.getElementById('grid').innerHTML = '<div class="error" style="grid-column:1/-1">데이터를 불러올 수 없습니다.<br>잠시 후 다시 시도해 주세요.</div>';
