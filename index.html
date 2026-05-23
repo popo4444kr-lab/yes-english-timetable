@@ -64,7 +64,7 @@ async function load() {
       const rowHtmlArray = []; 
 
       DAYS.forEach((day) => {
-        const list = students.filter(s => s[day] === slot);
+        const list = students.filter(s => Array.isArray(s[day]) && s[day].includes(slot));
         studentsInThisSlot += list.length;
         weekTotal += list.length;
 
@@ -83,19 +83,20 @@ async function load() {
       }
     });
 
-    // 💡 수정된 부분: 오늘이 주말인지 평일인지 똑똑하게 구별하는 인공지능 로직 추가
     document.getElementById('total').textContent = students.length;
     document.getElementById('weekly').textContent = weekTotal;
     
-    const currentDayNum = new Date().getDay(); // 0:일, 1:월, 2:화, 3:수, 4:목, 5:금, 6:토
+    const currentDayNum = new Date().getDay();
     let todayClassCount = 0;
     
-    // 만약 오늘이 월~금(1~5) 사이라면 정확한 요일의 수업 개수를 센다.
     if (currentDayNum >= 1 && currentDayNum <= 5) {
       const todayStr = DAYS[currentDayNum - 1];
-      todayClassCount = students.filter(s => s[todayStr]).length;
+      students.forEach(s => {
+        if (Array.isArray(s[todayStr])) {
+          todayClassCount += s[todayStr].length;
+        }
+      });
     } 
-    // 토, 일요일이면 자동으로 0이 출력된다.
     
     document.getElementById('today').textContent = todayClassCount;
 
