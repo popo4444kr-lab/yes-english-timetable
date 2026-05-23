@@ -42,7 +42,8 @@
 const DAYS = ['월','화','수','목','금'];
 const SLOTS = ['2-3시','3-4시','4-5시','5-7시','7-9시'];
 const DAY_PROPS = {'월':'월_시간','화':'화_시간','수':'수_시간','목':'목_시간','금':'금_시간'};
-const TODAY_IDX = new Date().getDay() - 1;
+const DAY_NUM = new Date().getDay();
+const TODAY_IDX = (DAY_NUM === 0 || DAY_NUM === 6) ? -1 : DAY_NUM - 1;
 
 async function load() {
   try {
@@ -74,8 +75,11 @@ async function load() {
 
     document.getElementById('total').textContent = students.length;
     document.getElementById('weekly').textContent = weekTotal;
-    const todayDay = DAYS[TODAY_IDX] || '월';
-    document.getElementById('today').textContent = students.filter(s => s[todayDay]).length;
+const todayDay = TODAY_IDX === -1 ? null : DAYS[TODAY_IDX];
+document.getElementById('today').textContent = todayDay
+  ? students.filter(s => s[todayDay]).length
+  : 0;
+   
 
   } catch(e) {
     document.getElementById('grid').innerHTML = '<div class="error" style="grid-column:1/-1">데이터를 불러올 수 없습니다.<br>잠시 후 다시 시도해 주세요.</div>';
