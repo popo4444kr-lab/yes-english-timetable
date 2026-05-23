@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YES English 시간표</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Apple SD Gothic Neo', sans-serif; background: #f5f5f5; padding: 20px; }
+  h1 { font-size: 18px; font-weight: 600; margin-bottom: 16px; color: #1a1a1a; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+  .stat { background: white; border-radius: 10px; padding: 12px 16px; }
+  .stat-label { font-size: 11px; color: #888; margin-bottom: 4px; }
+  .stat-val { font-size: 22px; font-weight: 600; color: #1a1a1a; }
+  .grid-wrap { overflow-x: auto; }
+  .grid { display: grid; grid-template-columns: 60px repeat(5, 1fr); gap: 6px; min-width: 500px; }
+  .day-header { text-align: center; font-size: 13px; font-weight: 600; color: #555; padding: 6px 0; }
+  .time-label { font-size: 11px; color: #aaa; text-align: center; padding-top: 10px; }
+  .cell { background: white; border-radius: 10px; padding: 8px; min-height: 70px; border: 1px solid #eee; }
+  .cell.empty { background: #fafafa; }
+  .count-badge { display: inline-block; background: #e8f0fe; color: #1a73e8; font-size: 10px; font-weight: 600; border-radius: 999px; padding: 1px 8px; margin-bottom: 5px; }
+  .student-name { font-size: 12px; color: #333; padding: 2px 0; border-bottom: 1px solid #f0f0f0; }
+  .student-name:last-child { border-bottom: none; }
+  .loading { text-align: center; padding: 60px; color: #aaa; font-size: 14px; }
+  .error { text-align: center; padding: 40px; color: #e24b4a; font-size: 13px; }
+</style>
+</head>
+<body>
+<h1>📅 YES English School — 주간 시간표</h1>
+<div class="stats">
+  <div class="stat"><div class="stat-label">총 재원생</div><div class="stat-val" id="total">-</div></div>
+  <div class="stat"><div class="stat-label">오늘 수업</div><div class="stat-val" id="today">-</div></div>
+  <div class="stat"><div class="stat-label">주간 총 수업</div><div class="stat-val" id="weekly">-</div></div>
+</div>
+<div class="grid-wrap">
+  <div class="grid" id="grid">
+    <div class="loading" style="grid-column:1/-1">불러오는 중...</div>
+  </div>
+</div>
+
+<script>
+const DAYS = ['월','화','수','목','금'];
+const SLOTS = ['2-3시','3-4시','4-5시','5-7시','7-9시'];
+const DAY_PROPS = {'월':'월_시간','화':'화_시간','수':'수_시간','목':'목_시간','금':'금_시간'};
+const TODAY_IDX = new Date().getDay() - 1;
+
+async function load() {
+  try {
+    const res = await fetch('/api/timetable');
+    const students = await res.json();
+
+    const grid = document.getElementById('grid');
+    grid.innerHTML = '';
+
+    // 헤더
+    grid.innerHTML += '<div></div>';
+    DAYS.forEach(d => grid.innerHTML += `<div class="day-header">${d}</div>`);
+
+    let weekTotal = 0;
+    SLOTS.forEach(slot => {
+      grid.innerHTML += `<div class="time-label">${slot}</div>`;
+      DAYS.forEach((day, di) => {
+        const list = students.filter(s => s[day] === slot);
+        weekTotal += list.length;
+        let html = `<div class="cell ${list.length ? '' : 'empty'}">`;
+        if (list.length) {
+          html += `<div><span class="count-badge">${list.length}명</span></div>`;
+          list.forEach(s => { html += `<div class="student-name">${s.name}</div>`; });
+        }
+        html += '</div>';
+        grid.innerHTML += html;
+      });
+    });
+
+    document.getElementById('total').textContent = students.length;
+    document.getElementById('weekly').textContent = weekTotal;
+    const todayDay = DAYS[TODAY_IDX] || '월';
+    document.getElementById('today').textContent = students.filter(s => s[todayDay]).length;
+
+  } catch(e) {
+    document.getElementById('grid').innerHTML = '<div class="error" style="grid-column:1/-1">데이터를 불러올 수 없습니다.<br>잠시 후 다시 시도해 주세요.</div>';
+  }
+}
+load();
+</script>
+</body>
+</html>
