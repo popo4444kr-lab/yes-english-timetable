@@ -40,12 +40,15 @@
 
 <script>
 const DAYS = ['월','화','수','목','금'];
-// 💡 수정된 부분: 오전 9시부터 밤 10시까지 1시간 단위로 무한 확장
+
+// 💡 수정된 부분: 선생님께서 노션에 적으시는 글자 모양과 똑같이 맞췄습니다.
+// 1-2시, 3-4시, 5-7시 등 모든 경우의 수를 포함합니다.
 const SLOTS = [
-  '9-10시', '10-11시', '11-12시', '12-13시', '13-14시', 
-  '14-15시', '15-16시', '16-17시', '17-18시', '18-19시', 
-  '19-20시', '20-21시', '21-22시'
+  '9-10시', '10-11시', '11-12시', '12-1시', 
+  '1-2시', '2-3시', '3-4시', '4-5시', 
+  '5-6시', '5-7시', '6-7시', '7-8시', '7-9시', '8-9시', '9-10시'
 ];
+
 const TODAY_IDX = new Date().getDay() - 1;
 
 async function load() {
@@ -56,16 +59,14 @@ async function load() {
     const grid = document.getElementById('grid');
     grid.innerHTML = '';
 
-    // 요일 헤더 그리기
     grid.innerHTML += '<div></div>';
     DAYS.forEach(d => grid.innerHTML += `<div class="day-header">${d}</div>`);
 
     let weekTotal = 0;
     
-    // 시간대별로 학생 배치하기
     SLOTS.forEach(slot => {
-      let studentsInThisSlot = 0; // 이 시간대의 총 학생 수 (스마트 필터링용)
-      const rowHtmlArray = []; // 화면에 그릴 HTML 임시 저장소
+      let studentsInThisSlot = 0; 
+      const rowHtmlArray = []; 
 
       DAYS.forEach((day) => {
         const list = students.filter(s => s[day] === slot);
@@ -81,14 +82,13 @@ async function load() {
         rowHtmlArray.push(html);
       });
 
-      // 💡 핵심 기술: 이 시간대에 등록된 학생이 1명이라도 있을 때만 화면에 그린다 (스마트 빈 칸 숨김)
+      // 학생이 한 명이라도 있는 시간대만 화면에 표시합니다.
       if (studentsInThisSlot > 0) {
-        grid.innerHTML += `<div class="time-label">${slot}</div>`; // 시간대 이름
-        rowHtmlArray.forEach(html => { grid.innerHTML += html; }); // 월~금 학생 명단
+        grid.innerHTML += `<div class="time-label">${slot}</div>`;
+        rowHtmlArray.forEach(html => { grid.innerHTML += html; });
       }
     });
 
-    // 상단 통계 숫자 업데이트
     document.getElementById('total').textContent = students.length;
     document.getElementById('weekly').textContent = weekTotal;
     const todayDay = DAYS[TODAY_IDX] || '월';
