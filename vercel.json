@@ -1,8 +1,126 @@
-{
-  "crons": [
-    {
-      "path": "/api/cron",
-      "schedule": "0 0 1 * *"
+import os
+import urllib.request
+import json
+from datetime import datetime
+
+def handler(request):
+    notion_token = os.environ.get("NOTION_API_KEY")
+    student_db_id = "3698fb930ae7812da2c8c34be1130655"
+    tuition_db_id = "36b8fb930ae781c59a35d1e5ce2753f3"
+    ledger_db_id  = "36c8fb930ae7815fb351c483ad4f0d8c"
+
+    now = datetime.now()
+    current_month = f"{now.year}년 {now.month:02d}월"
+
+    headers = {
+        "Authorization": f"Bearer {notion_token}",
+        "Content-Type": "application/json",
+        "Notion-Version": "2022-06-28"
     }
-  ]
-}
+
+    def notion_post(url, payload):
+        data = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+        try:
+            with urllib.request.urlopen(req) as res:
+                return json.loads(res.read().decode("utf-8"))
+        except Exception as e:
+            return {"error": str(e)}
+
+    results = {"수강료청구서": 0, "고정비": 0, "errors": []}
+
+    # ── 1단계: 재원 학생 수강료 청구서 자동 생성 ──────────
+    query = {
+        "filter": {
+            "property": "상태",
+            "select": {"equals": "재원"}
+        }
+    }
+    res = notion_post(
+        f"https://api.notion.com/v1/databases/{student_db_id}/query",
+        query
+    )
+    students = res.get("results", [])
+
+    for s in students:
+        try:
+            name = s["properties"]["이름"]["title"][0]["plain_text"]
+            tuition = int(s["properties"]["수강료"]["formula"]["number"] or 0)
+            pay_day = int(s["properties"]["납입일"]["number"] or 10)
+            import calendar
+            last_day = calendar.monthrange(now.year, now.month)[1]
+            pay_date = f"{now.year}-{now.month:02d}-{min(pay_day, last_day):02d}"
+
+            payload = {
+                "parent": {"database_id": tuition_db_id},
+                "properties": {
+                    "청구서제목": {"title": [{"type": "text", "text": {"content": f"{current_month} {name} 수강료"}}]},
+                    "청구월":     {"select": {"name": current_month}},
+                    "납부상태":   {"select": {"name": "미납"}},
+                    "기본수강료": {"number": tuition},
+                    "결제방식":   {"select": {"name": "카드결제"}},
+                    "입금확인":   {"checkbox": False},
+                    "연결된학생": {"relation": [{"id": s["id"]}]},
+                }
+            }
+            r = notion_post("https://api.notion.com/v1/pages", payload)
+            if "error" not in r:
+                results["수강료청구서"] += 1
+            else:
+                results["errors"].append(f"수강료_{name}: {r}")
+        except Exception as e:
+            results["errors"].append(f"수강료_{str(e)}")
+
+    # ── 2단계: 고정비 가계부 자동 생성 ───────────────────
+    fixed_costs = [
+        {"내역명": "프린트임대비",      "날짜": f"{now.year}-{now.month:02d}-01", "금액": 100000,  "출금계좌": "대구은행 주통장 (072-13-063007)",     "비용유형": "고정비", "공사구분": "학원운영"},
+        {"내역명": "소상공인대출",      "날짜": f"{now.year}-{now.month:02d}-22", "금액": 238224,  "출금계좌": "대구은행 주통장 (072-13-063007)",     "비용유형": "고정비", "공사구분": "학원운영"},
+        {"내역명": "주택담보대출",      "날짜": f"{now.year}-{now.month:02d}-20", "금액": 660300,  "출금계좌": "대구은행 주통장 (072-13-063007)",     "비용유형": "고정비", "공사구분": "개인가정"},
+        {"내역명": "국민연금",          "날짜": f"{now.year}-{now.month:02d}-28", "금액": 88420,   "출금계좌": "대구은행 카드통장 (508-10-819325-3)", "비용유형": "고정비", "공사구분": "개인가정"},
+        {"내역명": "국민건강보험",      "날짜": f"{now.year}-{now.month:02d}-28", "금액": 223150,  "출금계좌": "대구은행 카드통장 (508-10-819325-3)", "비용유형": "고정비", "공사구분": "개인가정"},
+        {"내역명": "교습소 인터넷비",   "날짜": f"{now.year}-{now.month:02d}-25", "금액": 61600,   "출금계좌": "롯데카드",                            "비용유형": "고정비", "공사구분": "학원운영"},
+        {"내역명": "교습소 정수기",     "날짜": f"{now.year}-{now.month:02d}-11", "금액": 29900,   "출금계좌": "롯데카드",                            "비용유형": "고정비", "공사구분": "학원운영"},
+        {"내역명": "클래스카드",        "날짜": f"{now.year}-{now.month:02d}-16", "금액": 28000,   "출금계좌": "롯데카드",                            "비용유형": "고정비", "공사구분": "학원운영"},
+        {"내역명": "실비보험",          "날짜": f"{now.year}-{now.month:02d}-25", "금액": 61120,   "출금계좌": "롯데카드",                            "비용유형": "고정비", "공사구분": "개인가정"},
+        {"내역명": "휴대폰비 아들",     "날짜": f"{now.year}-{now.month:02d}-09", "금액": 1970,    "출금계좌": "롯데카드",                            "비용유형": "고정비", "공사구분": "개인가정"},
+        {"내역명": "휴대폰비 아빠",     "날짜": f"{now.year}-{now.month:02d}-26", "금액": 2200,    "출금계좌": "롯데카드",                            "비용유형": "고정비", "공사구분": "개인가정"},
+        {"내역명": "푸른방송",          "날짜": f"{now.year}-{now.month:02d}-20", "금액": 15310,   "출금계좌": "롯데카드",                            "비용유형": "고정비", "공사구분": "개인가정"},
+        {"내역명": "아파트인터넷",      "날짜": f"{now.year}-{now.month:02d}-20", "금액": 22000,   "출금계좌": "하나카드",                            "비용유형": "고정비", "공사구분": "개인가정"},
+        {"내역명": "휴대폰 보험",       "날짜": f"{now.year}-{now.month:02d}-25", "금액": 7300,    "출금계좌": "카카오페이머니",                       "비용유형": "고정비", "공사구분": "개인가정"},
+        {"내역명": "어울림회비",        "날짜": f"{now.year}-{now.month:02d}-20", "금액": 20000,   "출금계좌": "카카오페이머니",                       "비용유형": "고정비", "공사구분": "개인가정"},
+        {"내역명": "아파트 관리비",     "날짜": f"{now.year}-{now.month:02d}-25", "금액": 0,       "출금계좌": "하나카드",                            "비용유형": "고정비", "공사구분": "개인가정"},
+        {"내역명": "대성에너지",        "날짜": f"{now.year}-{now.month:02d}-28", "금액": 0,       "출금계좌": "롯데카드",                            "비용유형": "고정비", "공사구분": "개인가정"},
+    ]
+
+    for item in fixed_costs:
+        try:
+            payload = {
+                "parent": {"database_id": ledger_db_id},
+                "properties": {
+                    "내역명": {"title": [{"type": "text", "text": {"content": item["내역명"]}}]},
+                    "날짜":   {"date": {"start": item["날짜"]}},
+                    "금액":   {"number": item["금액"]},
+                    "유형":   {"select": {"name": "지출"}},
+                    "비용유형": {"select": {"name": item["비용유형"]}},
+                    "공사구분": {"select": {"name": item["공사구분"]}},
+                    "출금계좌": {"select": {"name": item["출금계좌"]}},
+                    "세부카테고리": {"select": {"name": "관리비"}},
+                }
+            }
+            r = notion_post("https://api.notion.com/v1/pages", payload)
+            if "error" not in r:
+                results["고정비"] += 1
+            else:
+                results["errors"].append(f"고정비_{item['내역명']}: {r}")
+        except Exception as e:
+            results["errors"].append(f"고정비_{item['내역명']}_{str(e)}")
+
+    return {
+        "statusCode": 200,
+        "body": json.dumps({
+            "message": f"{current_month} 자동화 완료",
+            "수강료청구서": results["수강료청구서"],
+            "고정비": results["고정비"],
+            "오류": results["errors"]
+        }, ensure_ascii=False)
+    }
