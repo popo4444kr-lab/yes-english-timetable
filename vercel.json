@@ -1,13 +1,4 @@
 {
-  "version": 2,
-  "builds": [
-    { "src": "api/timetable.js", "use": "@vercel/node" },
-    { "src": "api/cron.py", "use": "@vercel/python" }
-  ],
-  "routes": [
-    { "src": "/api/timetable", "dest": "api/timetable.js" },
-    { "src": "/api/cron", "dest": "api/cron.py" }
-  ],
   "crons": [
     {
       "path": "/api/cron",
