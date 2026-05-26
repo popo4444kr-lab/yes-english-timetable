@@ -1,78 +1,85 @@
+from http.server import BaseHTTPRequestHandler
 import os
-import requests
+import urllib.request
+import json
 from datetime import datetime
+import calendar
 
-def handler(request):
-    # 1. 버셀 환경변수에서 노션 금고 열쇠를 호출합니다
-    notion_token = os.environ.get("NOTION_API_KEY")
-    
-    # 2. 오늘 날짜를 기반으로 시스템 시간축 날짜와 사람용 태그를 만듭니다
-    now = datetime.now()
-    month_label = now.strftime("%Y년 %m월")  # 사람 보기용 (예: 2026년 05월)
-    month_date = now.strftime("%Y-%m-01")   # 시스템 계산용 (예: 2026-05-01)
-    
-    # 3. 노션 데이터베이스 고유 식별 주소 (ID)
-    student_db_id = "3698fb930ae7812da2c8c34be1130655"
-    invoice_db_id = "36b8fb930ae781c59a35d1e5ce2753f3"
-    
-    headers = {
-        "Authorization": f"Bearer {notion_token}",
-        "Content-Type": "application/json",
-        "Notion-Version": "2022-06-28"
-    }
-    
-    # [단계 A] 학생 마스터 DB에서 '재원' 중인 학생 목록을 쿼리합니다
-    query_url = f"https://api.notion.com/v1/databases/{student_db_id}/query"
-    query_data = {
-        "filter": {
-            "property": "상태",
-            "select": {
-                "equals": "재원"
-            }
+class handler(BaseHTTPRequestHandler):
+
+    def do_GET(self):
+        notion_token = os.environ.get("NOTION_API_KEY")
+        student_db_id = "3698fb930ae7812da2c8c34be1130655"
+        tuition_db_id = "36b8fb930ae781c59a35d1e5ce2753f3"
+        ledger_db_id  = "36c8fb930ae7815fb351c483ad4f0d8c"
+
+        now = datetime.now()
+        current_month = f"{now.year}년 {now.month:02d}월"
+
+        headers_notion = {
+            "Authorization": f"Bearer {notion_token}",
+            "Content-Type": "application/json",
+            "Notion-Version": "2022-06-28"
         }
-    }
-    
-    response = requests.post(query_url, headers=headers, json=query_data)
-    students = response.json().get("results", [])
-    
-    # [단계 B] 재원생 명단을 돌면서 [시스템] ERP_시간축을 포함한 새 청구서를 주입합니다
-    create_url = "https://api.notion.com/v1/pages"
-    
-    for student in students:
-        # 학생의 이름을 안전하게 추출합니다
-        name_properties = student["properties"]["이름"]["title"]
-        if not name_properties:
-            continue
-        student_name = name_properties[0]["text"]["content"]
-        student_page_id = student["id"]
-        
-        # 챗GPT와 조율한 완벽한 규격의 대기업급 ERP 데이터 구조입니다
-        payload = {
-            "parent": {"database_id": invoice_db_id},
-            "properties": {
-                "청구서 명찰": {
-                    "title": [{"text": {"content": f"{now.strftime('%Y-%m')} {student_name} 수강료"}}]
-                },
-                "[확인] 수강생 이름": {
-                    "relation": [{"id": student_page_id}]
-                },
-                "[확인] 청구월 태그": {
-                    "select": {"name": month_label}
-                },
-                "[수동] 결제 수단": {
-                    "select": {"name": "카드 결제"}
-                },
-                "[수동] 입금 완료 단추": {
-                    "checkbox": False
-                },
-                # 원장 선생님이 새로 만드신 무적의 시간축 엔진 칸입니다!
-                "[시스템] ERP_시간축": {
-                    "date": {"start": month_date}
+
+        def notion_post(url, payload):
+            data = json.dumps(payload).encode("utf-8")
+            req = urllib.request.Request(url, data=data, headers=headers_notion, method="POST")
+            try:
+                with urllib.request.urlopen(req) as res:
+                    return json.loads(res.read().decode("utf-8"))
+            except Exception as e:
+                return {"error": str(e)}
+
+        results = {"수강료청구서": 0, "고정비": 0, "errors": []}
+
+        # ── 1단계: 수강료 청구서 ──
+        query = {"filter": {"property": "상태", "select": {"equals": "재원"}}}
+        res = notion_post(f"https://api.notion.com/v1/databases/{student_db_id}/query", query)
+        students = res.get("results", [])
+
+        for s in students:
+            try:
+                name = s["properties"]["이름"]["title"][0]["plain_text"]
+                tuition = int(s["properties"]["수강료"]["formula"]["number"] or 0)
+                pay_day = int(s["properties"]["납입일"]["number"] or 10)
+                last_day = calendar.monthrange(now.year, now.month)[1]
+                pay_date = f"{now.year}-{now.month:02d}-{min(pay_day, last_day):02d}"
+                payload = {
+                    "parent": {"database_id": tuition_db_id},
+                    "properties": {
+                        "청구서제목": {"title": [{"type": "text", "text": {"content": f"{current_month} {name} 수강료"}}]},
+                        "청구월":     {"select": {"name": current_month}},
+                        "납부상태":   {"select": {"name": "미납"}},
+                        "기본수강료": {"number": tuition},
+                        "결제방식":   {"select": {"name": "카드결제"}},
+                        "입금확인":   {"checkbox": False},
+                        "연결된학생": {"relation": [{"id": s["id"]}]},
+                    }
                 }
-            }
-        }
-        
-        # 노션 장부에 최종 전송 및 삽입합니다
-        requests.post(create_url, headers=headers, json=payload)
-        
-    return {"statusCode": 200, "body": "YES English ERP 자동 정산 완료"}
+                r = notion_post("https://api.notion.com/v1/pages", payload)
+                if "error" not in r:
+                    results["수강료청구서"] += 1
+                else:
+                    results["errors"].append(f"수강료_{name}: {r}")
+            except Exception as e:
+                results["errors"].append(f"수강료_{str(e)}")
+
+        # ── 2단계: 고정비 ──
+        fixed_costs = [
+            {"내역명": "프린트임대비",    "날짜": f"{now.year}-{now.month:02d}-01", "금액": 100000, "출금계좌": "대구은행 주통장 (072-13-063007)",     "공사구분": "학원운영"},
+            {"내역명": "소상공인대출",    "날짜": f"{now.year}-{now.month:02d}-22", "금액": 238224, "출금계좌": "대구은행 주통장 (072-13-063007)",     "공사구분": "학원운영"},
+            {"내역명": "주택담보대출",    "날짜": f"{now.year}-{now.month:02d}-20", "금액": 660300, "출금계좌": "대구은행 주통장 (072-13-063007)",     "공사구분": "개인가정"},
+            {"내역명": "국민연금",        "날짜": f"{now.year}-{now.month:02d}-28", "금액": 88420,  "출금계좌": "대구은행 카드통장 (508-10-819325-3)", "공사구분": "개인가정"},
+            {"내역명": "국민건강보험",    "날짜": f"{now.year}-{now.month:02d}-28", "금액": 223150, "출금계좌": "대구은행 카드통장 (508-10-819325-3)", "공사구분": "개인가정"},
+            {"내역명": "교습소 인터넷비", "날짜": f"{now.year}-{now.month:02d}-25", "금액": 61600,  "출금계좌": "롯데카드",                           "공사구분": "학원운영"},
+            {"내역명": "교습소 정수기",   "날짜": f"{now.year}-{now.month:02d}-11", "금액": 29900,  "출금계좌": "롯데카드",                           "공사구분": "학원운영"},
+            {"내역명": "클래스카드",      "날짜": f"{now.year}-{now.month:02d}-16", "금액": 28000,  "출금계좌": "롯데카드",                           "공사구분": "학원운영"},
+            {"내역명": "실비보험",        "날짜": f"{now.year}-{now.month:02d}-25", "금액": 61120,  "출금계좌": "롯데카드",                           "공사구분": "개인가정"},
+            {"내역명": "휴대폰비 아들",   "날짜": f"{now.year}-{now.month:02d}-09", "금액": 1970,   "출금계좌": "롯데카드",                           "공사구분": "개인가정"},
+            {"내역명": "휴대폰비 아빠",   "날짜": f"{now.year}-{now.month:02d}-26", "금액": 2200,   "출금계좌": "롯데카드",                           "공사구분": "개인가정"},
+            {"내역명": "푸른방송",        "날짜": f"{now.year}-{now.month:02d}-20", "금액": 15310,  "출금계좌": "롯데카드",                           "공사구분": "개인가정"},
+            {"내역명": "아파트인터넷",    "날짜": f"{now.year}-{now.month:02d}-20", "금액": 22000,  "출금계좌": "하나카드",                           "공사구분": "개인가정"},
+            {"내역명": "휴대폰 보험",     "날짜": f"{now.year}-{now.month:02d}-25", "금액": 7300,   "출금계좌": "카카오페이머니",                      "공사구분": "개인가정"},
+            {"내역명": "어울림회비",      "날짜": f"{now.year}-{now.month:02d}-20", "금액": 20000,  "출금계좌": "카카오페이머니",                      "공사구분": "개인가정"},
+            {"내역명": "아파트 관리비",   "날짜": f"{now.year}-{now.month:02d}-25", "금액": 0,      "출금계좌": "하나카드",
