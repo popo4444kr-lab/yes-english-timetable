@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YES English 월별 재무 현황</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background: #f5f6fa;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      color: #2d3436;
+      margin-bottom: 20px;
+      font-size: 1.4rem;
+    }
+    .month-selector {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    .month-selector select {
+      padding: 8px 16px;
+      border: 2px solid #6c5ce7;
+      border-radius: 8px;
+      font-size: 1rem;
+      color: #2d3436;
+      background: white;
+      cursor: pointer;
+    }
+    .month-selector button {
+      padding: 8px 20px;
+      background: #6c5ce7;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    .month-selector button:hover { background: #5a4bd1; }
+
+    .summary-cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .card .label {
+      font-size: 0.85rem;
+      color: #636e72;
+      margin-bottom: 8px;
+    }
+    .card .amount {
+      font-size: 1.4rem;
+      font-weight: bold;
+    }
+    .card.income .amount { color: #00b894; }
+    .card.expense .amount { color: #e17055; }
+    .card.profit .amount { color: #6c5ce7; }
+    .card.profit.negative .amount { color: #d63031; }
+
+    .chart-container {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .chart-title {
+      font-size: 0.95rem;
+      font-weight: bold;
+      color: #2d3436;
+      margin-bottom: 16px;
+    }
+    .bar-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .bar-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .bar-label {
+      width: 60px;
+      font-size: 0.85rem;
+      color: #636e72;
+      text-align: right;
+    }
+    .bar-track {
+      flex: 1;
+      background: #f0f0f0;
+      border-radius: 6px;
+      height: 28px;
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      padding-left: 10px;
+      font-size: 0.8rem;
+      color: white;
+      font-weight: bold;
+      transition: width 0.6s ease;
+    }
+    .bar-fill.income { background: #00b894; }
+    .bar-fill.expense { background: #e17055; }
+
+    .detail-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .detail-card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .detail-card h3 {
+      font-size: 0.95rem;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #f0f0f0;
+    }
+    .detail-card.income h3 { color: #00b894; }
+    .detail-card.expense h3 { color: #e17055; }
+    .detail-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      font-size: 0.85rem;
+      border-bottom: 1px solid #f9f9f9;
+    }
+    .detail-item .name {
+      color: #2d3436;
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-right: 8px;
+    }
+    .detail-item .value { color: #636e72; font-weight: bold; white-space: nowrap; }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #636e72;
+      font-size: 1rem;
+    }
+    .error {
+      text-align: center;
+      padding: 20px;
+      color: #d63031;
+      background: #fff5f5;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>💰 YES English 월별 재무 현황</h1>
+
+  <div class="month-selector">
+    <select id="yearSelect"></select>
+    <select id="monthSelect"></select>
+    <button onclick="loadData()">조회</button>
+  </div>
+
+  <div id="content">
+    <div class="loading">월을 선택하고 조회 버튼을 눌러주세요 😊</div>
+  </div>
+
+  <script>
+    // 연도/월 선택 옵션 생성
+    const yearSelect = document.getElementById('yearSelect');
+    const monthSelect = document.getElementById('monthSelect');
+
+    const now = new Date();
+    for (let y = now.getFullYear(); y >= 2025; y--) {
+      const opt = document.createElement('option');
+      opt.value = y;
+      opt.textContent = y + '년';
+      yearSelect.appendChild(opt);
+    }
+    for (let m = 1; m <= 12; m++) {
+      const opt = document.createElement('option');
+      opt.value = String(m).padStart(2, '0');
+      opt.textContent = m + '월';
+      monthSelect.appendChild(opt);
+    }
+    monthSelect.value = String(now.getMonth() + 1).padStart(2, '0');
+
+    function formatAmount(n) {
+      return '₩' + n.toLocaleString('ko-KR') + '원';
+    }
+
+    async function loadData() {
+      const year = yearSelect.value;
+      const month = monthSelect.value;
+      const monthStr = `${year}년 ${month}월`;
+
+      document.getElementById('content').innerHTML = '<div class="loading">⏳ 데이터 불러오는 중...</div>';
+
+      try {
+        const res = await fetch(`/api/finance?month=${encodeURIComponent(monthStr)}`);
+        const data = await res.json();
+
+        if (data.error) throw new Error(data.error);
+
+        const { 수입합계, 지출합계, 순수익, 수입내역, 지출내역 } = data;
+        const isPositive = 순수익 >= 0;
+        const maxAmount = Math.max(수입합계, 지출합계);
+        const incomeWidth = maxAmount > 0 ? (수입합계 / maxAmount * 100) : 0;
+        const expenseWidth = maxAmount > 0 ? (지출합계 / maxAmount * 100) : 0;
+
+        document.getElementById('content').innerHTML = `
+          <div class="summary-cards">
+            <div class="card income">
+              <div class="label">💚 총 수입</div>
+              <div class="amount">${formatAmount(수입합계)}</div>
+            </div>
+            <div class="card expense">
+              <div class="label">🔴 총 지출</div>
+              <div class="amount">${formatAmount(지출합계)}</div>
+            </div>
+            <div class="card profit ${isPositive ? '' : 'negative'}">
+              <div class="label">${isPositive ? '💜 순수익' : '⚠️ 적자'}</div>
+              <div class="amount">${formatAmount(Math.abs(순수익))}${isPositive ? '' : ' 초과'}</div>
+            </div>
+          </div>
+
+          <div class="chart-container">
+            <div class="chart-title">📊 ${monthStr} 수입/지출 비교</div>
+            <div class="bar-wrap">
+              <div class="bar-row">
+                <div class="bar-label">수입</div>
+                <div class="bar-track">
+                  <div class="bar-fill income" style="width:${incomeWidth}%">${formatAmount(수입합계)}</div>
+                </div>
+              </div>
+              <div class="bar-row">
+                <div class="bar-label">지출</div>
+                <div class="bar-track">
+                  <div class="bar-fill expense" style="width:${expenseWidth}%">${formatAmount(지출합계)}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="detail-section">
+            <div class="detail-card income">
+              <h3>💚 수입 내역 (${수입내역.length}건)</h3>
+              ${수입내역.length === 0 ? '<div style="color:#999;font-size:0.85rem">내역 없음</div>' :
+                수입내역.map(i => `
+                  <div class="detail-item">
+                    <span class="name">${i.내역명}</span>
+                    <span class="value">${formatAmount(i.금액)}</span>
+                  </div>
+                `).join('')}
+            </div>
+            <div class="detail-card expense">
+              <h3>🔴 지출 내역 (${지출내역.length}건)</h3>
+              ${지출내역.length === 0 ? '<div style="color:#999;font-size:0.85rem">내역 없음</div>' :
+                지출내역.map(i => `
+                  <div class="detail-item">
+                    <span class="name">${i.내역명}</span>
+                    <span class="value">${formatAmount(i.금액)}</span>
+                  </div>
+                `).join('')}
+            </div>
+          </div>
+        `;
+      } catch (e) {
+        document.getElementById('content').innerHTML = `<div class="error">❌ 오류: ${e.message}</div>`;
+      }
+    }
+
+    // 페이지 로드시 이번달 자동 조회
+    loadData();
+  </script>
+</body>
+</html>
