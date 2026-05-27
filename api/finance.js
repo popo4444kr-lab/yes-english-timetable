@@ -5,10 +5,10 @@ function notionQuery(dbId, payload, token) {
     const data = JSON.stringify(payload);
     const options = {
       hostname: 'api.notion.com',
-      path: `/v1/databases/${dbId}/query`,
+      path: '/v1/databases/' + dbId + '/query',
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'Authorization': 'Bearer ' + token,
         'Content-Type': 'application/json',
         'Notion-Version': '2022-06-28',
         'Content-Length': Buffer.byteLength(data)
@@ -18,11 +18,8 @@ function notionQuery(dbId, payload, token) {
       let body = '';
       res.on('data', chunk => body += chunk);
       res.on('end', () => {
-        try {
-          resolve(JSON.parse(body));
-        } catch(e) {
-          reject(new Error('파싱오류'));
-        }
+        try { resolve(JSON.parse(body)); }
+        catch(e) { reject(new Error('파싱오류')); }
       });
     });
     req.on('error', reject);
@@ -51,21 +48,11 @@ module.exports = async (req, res) => {
     let cursor = undefined;
 
     while (hasMore) {
-      const payload = {
-        filter: {
-          property: '정산년월',
-          formula: { string: { equals: monthStr } }
-        },
-        page_size: 100
-      };
-      if (cursor) {
-        payload.start_cursor = cursor;
-      }
+      const payload = { page_size: 100 };
+      if (cursor) payload.start_cursor = cursor;
 
       const data = await notionQuery(ledgerDbId, payload, token);
-      if (data.object === 'error') {
-        throw new Error(data.message);
-      }
+      if (data.object === 'error') throw new Error(data.message);
 
       allResults = allResults.concat(data.results || []);
       hasMore = data.has_more || false;
@@ -78,9 +65,20 @@ module.exports = async (req, res) => {
     const expenseList = [];
 
     for (const item of allResults) {
-      const name = item.properties['내역명'] && item.properties['내역명'].title && item.properties['내역명'].title[0] ? item.properties['내역명'].title[0].plain_text : '이름없음';
-      const amount = item.properties['금액'] && item.properties['금액'].number ? item.properties['금액'].number : 0;
-      const type = item.properties['유형'] && item.properties['유형'].select ? item.properties['유형'].select.name : '';
+      const props = item.properties;
+
+      // 정산년월 수식값 읽기
+      const itemMonth = props['정산년월'] && props['정산년월'].formula && props['정산년월'].formula.string
+        ? props['정산년월'].formula.string
+        : '';
+
+      // 해당 월이 아니면 건너뜀
+      if (itemMonth !== monthStr) continue;
+
+      const name = props['내역명'] && props['내역명'].title && props['내역명'].title[0]
+        ? props['내역명'].title[0].plain_text : '이름없음';
+      const amount = props['금액'] && props['금액'].number ? props['금액'].number : 0;
+      const type = props['유형'] && props['유형'].select ? props['유형'].select.name : '';
 
       if (type === '수입') {
         incomeTotal += amount;
