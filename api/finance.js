@@ -31,7 +31,7 @@ module.exports = async (req, res) => {
 
   const token = process.env.NOTION_API_KEY;
   const ledgerDbId = '36c8fb930ae7815fb351c483ad4f0d8c';
-  const { month } = req.query;
+ const month = req.query.month ? decodeURIComponent(req.query.month) : null;
 
   if (!month) {
     return res.status(400).json({ error: 'month 파라미터 필요 (예: 2026년 05월)' });
