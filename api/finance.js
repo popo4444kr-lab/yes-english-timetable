@@ -18,8 +18,11 @@ function notionQuery(dbId, payload, token) {
       let body = '';
       res.on('data', chunk => body += chunk);
       res.on('end', () => {
-        try { resolve(JSON.parse(body)); }
-        catch(e) { reject(new Error('파싱오류: ' + body.substring(0, 200))); }
+        try {
+          resolve(JSON.parse(body));
+        } catch(e) {
+          reject(new Error('파싱오류'));
+        }
       });
     });
     req.on('error', reject);
@@ -34,6 +37,70 @@ module.exports = async (req, res) => {
 
   const token = process.env.NOTION_API_KEY;
   const ledgerDbId = '36c8fb930ae7815fb351c483ad4f0d8c';
+  const year = req.query.year || '2026';
+  const month = req.query.month || '05';
+  const monthStr = year + '년 ' + month + '월';
 
-  // 연도, 월을 따로 받아서 직접 조합
-  const year = req.q
+  if (!token) {
+    return res.status(500).json({ error: 'NOTION_API_KEY 없음' });
+  }
+
+  try {
+    let allResults = [];
+    let hasMore = true;
+    let cursor = undefined;
+
+    while (hasMore) {
+      const payload = {
+        filter: {
+          property: '정산년월',
+          formula: { string: { equals: monthStr } }
+        },
+        page_size: 100
+      };
+      if (cursor) {
+        payload.start_cursor = cursor;
+      }
+
+      const data = await notionQuery(ledgerDbId, payload, token);
+      if (data.object === 'error') {
+        throw new Error(data.message);
+      }
+
+      allResults = allResults.concat(data.results || []);
+      hasMore = data.has_more || false;
+      cursor = data.next_cursor;
+    }
+
+    let incomeTotal = 0;
+    let expenseTotal = 0;
+    const incomeList = [];
+    const expenseList = [];
+
+    for (const item of allResults) {
+      const name = item.properties['내역명'] && item.properties['내역명'].title && item.properties['내역명'].title[0] ? item.properties['내역명'].title[0].plain_text : '이름없음';
+      const amount = item.properties['금액'] && item.properties['금액'].number ? item.properties['금액'].number : 0;
+      const type = item.properties['유형'] && item.properties['유형'].select ? item.properties['유형'].select.name : '';
+
+      if (type === '수입') {
+        incomeTotal += amount;
+        incomeList.push({ name: name, amount: amount });
+      } else if (type === '지출') {
+        expenseTotal += amount;
+        expenseList.push({ name: name, amount: amount });
+      }
+    }
+
+    return res.status(200).json({
+      monthStr: monthStr,
+      수입합계: incomeTotal,
+      지출합계: expenseTotal,
+      순수익: incomeTotal - expenseTotal,
+      수입내역: incomeList,
+      지출내역: expenseList
+    });
+
+  } catch(e) {
+    return res.status(500).json({ error: e.message });
+  }
+};
