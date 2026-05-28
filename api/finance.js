@@ -34,13 +34,11 @@ module.exports = async (req, res) => {
 
   const token = process.env.NOTION_API_KEY;
   const ledgerDbId = '36c8fb930ae7815fb351c483ad4f0d8c';
-  const year = req.query.year || '2026';
-  const month = req.query.month || '05';
-  const monthStr = year + '년 ' + month + '월';
+  const startDate = req.query.start;
+  const endDate = req.query.end;
 
-  if (!token) {
-    return res.status(500).json({ error: 'NOTION_API_KEY 없음' });
-  }
+  if (!token) return res.status(500).json({ error: 'NOTION_API_KEY 없음' });
+  if (!startDate || !endDate) return res.status(400).json({ error: 'start, end 파라미터 필요' });
 
   try {
     let allResults = [];
@@ -48,7 +46,15 @@ module.exports = async (req, res) => {
     let cursor = undefined;
 
     while (hasMore) {
-      const payload = { page_size: 100 };
+      const payload = {
+        filter: {
+          and: [
+            { property: '날짜', date: { on_or_after: startDate } },
+            { property: '날짜', date: { on_or_before: endDate } }
+          ]
+        },
+        page_size: 100
+      };
       if (cursor) payload.start_cursor = cursor;
 
       const data = await notionQuery(ledgerDbId, payload, token);
@@ -66,15 +72,6 @@ module.exports = async (req, res) => {
 
     for (const item of allResults) {
       const props = item.properties;
-
-      // 정산년월 수식값 읽기
-      const itemMonth = props['정산년월'] && props['정산년월'].formula && props['정산년월'].formula.string
-        ? props['정산년월'].formula.string
-        : '';
-
-      // 해당 월이 아니면 건너뜀
-      if (itemMonth !== monthStr) continue;
-
       const name = props['내역명'] && props['내역명'].title && props['내역명'].title[0]
         ? props['내역명'].title[0].plain_text : '이름없음';
       const amount = props['금액'] && props['금액'].number ? props['금액'].number : 0;
@@ -82,15 +79,16 @@ module.exports = async (req, res) => {
 
       if (type === '수입') {
         incomeTotal += amount;
-        incomeList.push({ name: name, amount: amount });
+        incomeList.push({ name, amount });
       } else if (type === '지출') {
         expenseTotal += amount;
-        expenseList.push({ name: name, amount: amount });
+        expenseList.push({ name, amount });
       }
     }
 
     return res.status(200).json({
-      monthStr: monthStr,
+      startDate,
+      endDate,
       수입합계: incomeTotal,
       지출합계: expenseTotal,
       순수익: incomeTotal - expenseTotal,
