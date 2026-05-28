@@ -3,61 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>YES English 월별 재무 현황</title>
+  <title>YES English 재무 현황</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Noto Sans KR', sans-serif; background: #f5f6fa; padding: 20px; }
     h1 { text-align: center; color: #2d3436; margin-bottom: 20px; font-size: 1.4rem; }
-
-    .date-selector {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 24px;
-      flex-wrap: wrap;
-    }
+    .date-selector { display: flex; justify-content: center; align-items: center; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
     .date-selector label { font-size: 0.9rem; color: #636e72; font-weight: bold; }
-    .date-selector input[type="date"] {
-      padding: 8px 12px;
-      border: 2px solid #6c5ce7;
-      border-radius: 8px;
-      font-size: 0.95rem;
-      color: #2d3436;
-      background: white;
-      cursor: pointer;
-    }
+    .date-selector input[type="date"] { padding: 8px 12px; border: 2px solid #6c5ce7; border-radius: 8px; font-size: 0.95rem; color: #2d3436; background: white; cursor: pointer; }
     .date-selector span { font-size: 1rem; color: #636e72; }
-    .date-selector button {
-      padding: 8px 20px;
-      background: #6c5ce7;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-size: 1rem;
-      cursor: pointer;
-      margin-left: 4px;
-    }
+    .date-selector button { padding: 8px 20px; background: #6c5ce7; color: white; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; margin-left: 4px; }
     .date-selector button:hover { background: #5a4bd1; }
-
-    .shortcut-btns {
-      display: flex;
-      justify-content: center;
-      gap: 8px;
-      margin-bottom: 20px;
-      flex-wrap: wrap;
-    }
-    .shortcut-btns button {
-      padding: 5px 14px;
-      background: white;
-      color: #6c5ce7;
-      border: 2px solid #6c5ce7;
-      border-radius: 20px;
-      font-size: 0.85rem;
-      cursor: pointer;
-    }
+    .shortcut-btns { display: flex; justify-content: center; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+    .shortcut-btns button { padding: 5px 14px; background: white; color: #6c5ce7; border: 2px solid #6c5ce7; border-radius: 20px; font-size: 0.85rem; cursor: pointer; }
     .shortcut-btns button:hover { background: #6c5ce7; color: white; }
-
     .summary-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
     .card { background: white; border-radius: 12px; padding: 20px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
     .card .label { font-size: 0.85rem; color: #636e72; margin-bottom: 8px; }
@@ -66,14 +25,7 @@
     .card.expense .amount { color: #e17055; }
     .card.profit .amount { color: #6c5ce7; }
     .card.negative .amount { color: #d63031; }
-
-    .period-label {
-      text-align: center;
-      font-size: 0.85rem;
-      color: #636e72;
-      margin-bottom: 16px;
-    }
-
+    .period-label { text-align: center; font-size: 0.85rem; color: #636e72; margin-bottom: 16px; }
     .chart-container { background: white; border-radius: 12px; padding: 20px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
     .chart-title { font-size: 0.95rem; font-weight: bold; color: #2d3436; margin-bottom: 16px; }
     .bar-wrap { display: flex; flex-direction: column; gap: 12px; }
@@ -83,7 +35,6 @@
     .bar-fill { height: 100%; border-radius: 6px; display: flex; align-items: center; padding-left: 10px; font-size: 0.8rem; color: white; font-weight: bold; min-width: 10px; transition: width 0.8s ease; }
     .bar-fill.income { background: #00b894; }
     .bar-fill.expense { background: #e17055; }
-
     .detail-section { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
     .detail-card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); max-height: 400px; overflow-y: auto; }
     .detail-card h3 { font-size: 0.95rem; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #f0f0f0; position: sticky; top: 0; background: white; }
@@ -92,14 +43,12 @@
     .detail-item { display: flex; justify-content: space-between; padding: 6px 0; font-size: 0.82rem; border-bottom: 1px solid #f9f9f9; }
     .detail-item .name { color: #2d3436; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 8px; }
     .detail-item .value { color: #636e72; font-weight: bold; white-space: nowrap; }
-
     .loading { text-align: center; padding: 40px; color: #636e72; }
     .error { text-align: center; padding: 20px; color: #d63031; background: #fff5f5; border-radius: 8px; margin: 20px 0; }
   </style>
 </head>
 <body>
   <h1>💰 YES English 재무 현황</h1>
-
   <div class="date-selector">
     <label>시작일</label>
     <input type="date" id="startDate">
@@ -108,81 +57,71 @@
     <input type="date" id="endDate">
     <button onclick="loadData()">조회</button>
   </div>
-
   <div class="shortcut-btns">
     <button onclick="setThisMonth()">이번달</button>
     <button onclick="setLastMonth()">지난달</button>
     <button onclick="setLast3Months()">최근 3개월</button>
     <button onclick="setThisYear()">올해 전체</button>
   </div>
-
   <div id="content"><div class="loading">⏳ 데이터 불러오는 중...</div></div>
 
   <script>
-    function formatDate(d) {
-      return d.toISOString().split('T')[0];
-    }
+    function pad(n) { return String(n).padStart(2, '0'); }
 
     function formatAmount(n) {
       return '₩' + n.toLocaleString('ko-KR') + '원';
     }
 
     function formatDateKo(str) {
-      const d = new Date(str);
-      return d.getFullYear() + '년 ' + (d.getMonth()+1) + '월 ' + d.getDate() + '일';
+      const parts = str.split('-');
+      return parts[0] + '년 ' + parseInt(parts[1]) + '월 ' + parseInt(parts[2]) + '일';
     }
 
-    // 이번달
     function setThisMonth() {
       const now = new Date();
-const start = new Date(now.getFullYear(), now.getMonth(), 1);
-start.setHours(12);
-      const end = new Date(now.getFullYear(), now.getMonth()+1, 0);
-      document.getElementById('startDate').value = formatDate(start);
-      document.getElementById('endDate').value = formatDate(end);
+      const y = now.getFullYear();
+      const m = now.getMonth() + 1;
+      const lastDay = new Date(y, m, 0).getDate();
+      document.getElementById('startDate').value = y + '-' + pad(m) + '-01';
+      document.getElementById('endDate').value = y + '-' + pad(m) + '-' + pad(lastDay);
       loadData();
     }
 
-    // 지난달
     function setLastMonth() {
       const now = new Date();
-      const start = new Date(now.getFullYear(), now.getMonth()-1, 1);
-      const end = new Date(now.getFullYear(), now.getMonth(), 0);
-      document.getElementById('startDate').value = formatDate(start);
-      document.getElementById('endDate').value = formatDate(end);
+      const y = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+      const m = now.getMonth() === 0 ? 12 : now.getMonth();
+      const lastDay = new Date(y, m, 0).getDate();
+      document.getElementById('startDate').value = y + '-' + pad(m) + '-01';
+      document.getElementById('endDate').value = y + '-' + pad(m) + '-' + pad(lastDay);
       loadData();
     }
 
-    // 최근 3개월
     function setLast3Months() {
       const now = new Date();
-      const start = new Date(now.getFullYear(), now.getMonth()-2, 1);
-      const end = new Date(now.getFullYear(), now.getMonth()+1, 0);
-      document.getElementById('startDate').value = formatDate(start);
-      document.getElementById('endDate').value = formatDate(end);
+      const endY = now.getFullYear();
+      const endM = now.getMonth() + 1;
+      const endLastDay = new Date(endY, endM, 0).getDate();
+      let startM = endM - 2;
+      let startY = endY;
+      if (startM <= 0) { startM += 12; startY -= 1; }
+      document.getElementById('startDate').value = startY + '-' + pad(startM) + '-01';
+      document.getElementById('endDate').value = endY + '-' + pad(endM) + '-' + pad(endLastDay);
       loadData();
     }
 
-    // 올해 전체
     function setThisYear() {
-      const now = new Date();
-      document.getElementById('startDate').value = now.getFullYear() + '-01-01';
-      document.getElementById('endDate').value = now.getFullYear() + '-12-31';
+      const y = new Date().getFullYear();
+      document.getElementById('startDate').value = y + '-01-01';
+      document.getElementById('endDate').value = y + '-12-31';
       loadData();
     }
 
     async function loadData() {
       const start = document.getElementById('startDate').value;
       const end = document.getElementById('endDate').value;
-
-      if (!start || !end) {
-        alert('시작일과 종료일을 선택해주세요!');
-        return;
-      }
-      if (start > end) {
-        alert('시작일이 종료일보다 늦을 수 없어요!');
-        return;
-      }
+      if (!start || !end) { alert('시작일과 종료일을 선택해주세요!'); return; }
+      if (start > end) { alert('시작일이 종료일보다 늦을 수 없어요!'); return; }
 
       document.getElementById('content').innerHTML = '<div class="loading">⏳ 데이터 불러오는 중...</div>';
 
@@ -199,7 +138,6 @@ start.setHours(12);
 
         document.getElementById('content').innerHTML = `
           <div class="period-label">📅 조회 기간: ${formatDateKo(start)} ~ ${formatDateKo(end)}</div>
-
           <div class="summary-cards">
             <div class="card income">
               <div class="label">💚 총 수입</div>
@@ -214,52 +152,36 @@ start.setHours(12);
               <div class="amount">${isPositive ? '' : '-'}${formatAmount(Math.abs(순수익))}</div>
             </div>
           </div>
-
           <div class="chart-container">
             <div class="chart-title">📊 수입/지출 비교</div>
             <div class="bar-wrap">
               <div class="bar-row">
                 <div class="bar-label">수입</div>
-                <div class="bar-track">
-                  <div class="bar-fill income" style="width:${incomeWidth}%">${formatAmount(수입합계)}</div>
-                </div>
+                <div class="bar-track"><div class="bar-fill income" style="width:${incomeWidth}%">${formatAmount(수입합계)}</div></div>
               </div>
               <div class="bar-row">
                 <div class="bar-label">지출</div>
-                <div class="bar-track">
-                  <div class="bar-fill expense" style="width:${expenseWidth}%">${formatAmount(지출합계)}</div>
-                </div>
+                <div class="bar-track"><div class="bar-fill expense" style="width:${expenseWidth}%">${formatAmount(지출합계)}</div></div>
               </div>
             </div>
           </div>
-
           <div class="detail-section">
             <div class="detail-card income">
               <h3>💚 수입 내역 (${수입내역.length}건)</h3>
               ${수입내역.length === 0 ? '<div style="color:#999">내역 없음</div>' :
-                수입내역.map(i => `
-                  <div class="detail-item">
-                    <span class="name">${i.name}</span>
-                    <span class="value">${formatAmount(i.amount)}</span>
-                  </div>`).join('')}
+                수입내역.map(i => `<div class="detail-item"><span class="name">${i.name}</span><span class="value">${formatAmount(i.amount)}</span></div>`).join('')}
             </div>
             <div class="detail-card expense">
               <h3>🔴 지출 내역 (${지출내역.length}건)</h3>
               ${지출내역.length === 0 ? '<div style="color:#999">내역 없음</div>' :
-                지출내역.map(i => `
-                  <div class="detail-item">
-                    <span class="name">${i.name}</span>
-                    <span class="value">${formatAmount(i.amount)}</span>
-                  </div>`).join('')}
+                지출내역.map(i => `<div class="detail-item"><span class="name">${i.name}</span><span class="value">${formatAmount(i.amount)}</span></div>`).join('')}
             </div>
           </div>`;
-
       } catch(e) {
         document.getElementById('content').innerHTML = '<div class="error">❌ 오류: ' + e.message + '</div>';
       }
     }
 
-    // 페이지 로드시 이번달 자동 조회
     setThisMonth();
   </script>
 </body>
