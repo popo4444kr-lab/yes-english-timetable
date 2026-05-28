@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wendy 원장님 실시간 재무 대시보드</title>
+    <style>
+        body { font-family: 'Malgun Gothic', sans-serif; background-color: #f9f9fb; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        h2 { text-align: center; color: #444; margin-bottom: 25px; font-size: 22px; }
+        .date-picker { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 20px; }
+        .date-picker input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+        button { width: 100%; padding: 12px; background-color: #0070f3; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+        button:hover { background-color: #0051cb; }
+        .result-box { margin-top: 25px; display: none; }
+        .card { padding: 15px; border-radius: 8px; margin-bottom: 12px; font-size: 16px; font-weight: bold; display: flex; justify-content: space-between; }
+        .income { background-color: #e6f6ec; color: #107c41; }
+        .expense { background-color: #fde8e8; color: #c81e1e; }
+        .net { background-color: #f0f4f9; color: #0051cb; border-top: 2px solid #0070f3; margin-top: 15px; }
+        .loading { text-align: center; display: none; color: #666; font-size: 14px; margin-top: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>📊 Wendy 실시간 재무 대시보드</h2>
+    
+    <div class="date-picker">
+        <input type="date" id="startDate">
+        <input type="date" id="endDate">
+    </div>
+    
+    <button onclick="fetchFinance()">실시간 조회하기</button>
+    
+    <div class="loading" id="loadingBox">🔄 노션에서 데이터를 실시간으로 불러오는 중...</div>
+
+    <div class="result-box" id="resultBox">
+        <div class="card income">
+            <span>📈 총 수입</span>
+            <span id="incomeVal">0원</span>
+        </div>
+        <div class="card expense">
+            <span>📉 총 지출</span>
+            <span id="expenseVal">0원</span>
+        </div>
+        <div class="card net">
+            <span>💰 당월 순수익</span>
+            <span id="netVal">0원</span>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 기본 날짜를 이번 달 1일부터 오늘까지로 자동 세팅
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    
+    document.getElementById('startDate').value = `${yyyy}-${mm}-01`;
+    document.getElementById('endDate').value = `${yyyy}-${mm}-${dd}`;
+
+    async function fetchFinance() {
+        const start = document.getElementById('startDate').value;
+        const end = document.getElementById('endDate').value;
+        const loadingBox = document.getElementById('loadingBox');
+        const resultBox = document.getElementById('resultBox');
+
+        if(!start || !end) { alert('날짜를 모두 선택해 주세요.'); return; }
+
+        loadingBox.style.display = 'block';
+        resultBox.style.display = 'none';
+
+        try {
+            // Vercel 서버에 연동해 둔 wendy 전용 대시보드 API 호출
+            const response = await fetch(`/api/wendy_finance?start=${start}&end=${end}`);
+            const data = await response.json();
+
+            if(data.error) {
+                alert('에러 발생: ' + data.error);
+            } else {
+                document.getElementById('incomeVal').innerText = data.수입합계.toLocaleString() + '원';
+                document.getElementById('expenseVal').innerText = data.지출합계.toLocaleString() + '원';
+                document.getElementById('netVal').innerText = data.순수익.toLocaleString() + '원';
+                resultBox.style.display = 'block';
+            }
+        } catch (e) {
+            alert('서버 통신 실패: ' + e.message);
+        } finally {
+            loadingBox.style.display = 'none';
+        }
+    }
+</script>
+
+</body>
+</html>
