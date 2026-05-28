@@ -77,36 +77,41 @@
       return parts[0] + '년 ' + parseInt(parts[1]) + '월 ' + parseInt(parts[2]) + '일';
     }
 
+    function getLastDay(year, month) {
+      return new Date(year, month, 0).getDate();
+    }
+
     function setThisMonth() {
       const now = new Date();
       const y = now.getFullYear();
       const m = now.getMonth() + 1;
-      const lastDay = new Date(y, m, 0).getDate();
+      const last = getLastDay(y, m);
       document.getElementById('startDate').value = y + '-' + pad(m) + '-01';
-      document.getElementById('endDate').value = y + '-' + pad(m) + '-' + pad(lastDay);
+      document.getElementById('endDate').value = y + '-' + pad(m) + '-' + pad(last);
       loadData();
     }
 
     function setLastMonth() {
       const now = new Date();
-      const y = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
-      const m = now.getMonth() === 0 ? 12 : now.getMonth();
-      const lastDay = new Date(y, m, 0).getDate();
+      let y = now.getFullYear();
+      let m = now.getMonth();
+      if (m === 0) { m = 12; y -= 1; }
+      const last = getLastDay(y, m);
       document.getElementById('startDate').value = y + '-' + pad(m) + '-01';
-      document.getElementById('endDate').value = y + '-' + pad(m) + '-' + pad(lastDay);
+      document.getElementById('endDate').value = y + '-' + pad(m) + '-' + pad(last);
       loadData();
     }
 
     function setLast3Months() {
       const now = new Date();
+      let startY = now.getFullYear();
+      let startM = now.getMonth() - 1;
+      if (startM <= 0) { startM += 12; startY -= 1; }
       const endY = now.getFullYear();
       const endM = now.getMonth() + 1;
-      const endLastDay = new Date(endY, endM, 0).getDate();
-      let startM = endM - 2;
-      let startY = endY;
-      if (startM <= 0) { startM += 12; startY -= 1; }
+      const endLast = getLastDay(endY, endM);
       document.getElementById('startDate').value = startY + '-' + pad(startM) + '-01';
-      document.getElementById('endDate').value = endY + '-' + pad(endM) + '-' + pad(endLastDay);
+      document.getElementById('endDate').value = endY + '-' + pad(endM) + '-' + pad(endLast);
       loadData();
     }
 
