@@ -28,12 +28,13 @@ function notionRequest(url, payload, token, method = 'POST') {
 
 module.exports = async (req, res) => {
   const token = process.env.NOTION_API_KEY;
-  const studentDbId  = '3698fb930ae7812da2c8c34be1130655';
-  const tuitionDbId  = '36b8fb930ae781c59a35d1e5ce2753f3';
-  const ledgerDbId   = '36c8fb930ae7815fb351c483ad4f0d8c';
-  const fixedCostDbId = '36c8fb930ae7819fa1b3fe8bf0a67c27'; // 고정비 마스터 DB
+  const studentDbId   = '3698fb930ae7812da2c8c34be1130655';
+  const tuitionDbId   = '36b8fb930ae781c59a35d1e5ce2753f3';
+  const ledgerDbId    = '36c8fb930ae7815fb351c483ad4f0d8c';
+  const fixedCostDbId = '36c8fb930ae7819fa1b3fe8bf0a67c27';
 
-  const now = new Date();
+  // ✅ 한국 시간(KST) 기준으로 날짜 계산
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const currentMonth = `${year}년 ${month}월`;
@@ -51,7 +52,7 @@ module.exports = async (req, res) => {
     for (const s of studentRes.results || []) {
       try {
         const name = s.properties['이름'].title[0].plain_text;
-        const tuition = s.properties['수강료'].formula.number || 0;
+        const tuition = s.properties['수강료']?.formula?.number || s.properties['수강료']?.number || 0;
         await notionRequest('https://api.notion.com/v1/pages', {
           parent: { database_id: tuitionDbId },
           properties: {
