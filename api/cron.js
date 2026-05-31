@@ -58,7 +58,6 @@ module.exports = async (req, res) => {
           properties: {
             '청구서제목': { title: [{ type: 'text', text: { content: `${currentMonth} ${name} 수강료` } }] },
             '청구월':     { select: { name: currentMonth } },
-            '납부상태':   { select: { name: '미납' } },
             '기본수강료': { number: tuition },
             '결제방식':   { select: { name: '카드결제' } },
             '입금확인':   { checkbox: false },
