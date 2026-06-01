@@ -38,10 +38,11 @@ module.exports = async (req, res) => {
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const currentMonth = `${year}년 ${month}월`;
+  const erpDate = `${year}-${month}-01`;  // ✅ [시스템] ERP_시간축용 날짜
 
   const results = { 수강료청구서: 0, 고정비: 0, errors: [] };
 
-  // ── 1단계: 수강료 청구서 ──
+  // ── 1단계: 수강료 청구서 자동 생성 ──
   try {
     const studentRes = await notionRequest(
       `https://api.notion.com/v1/databases/${studentDbId}/query`,
@@ -56,12 +57,13 @@ module.exports = async (req, res) => {
         await notionRequest('https://api.notion.com/v1/pages', {
           parent: { database_id: tuitionDbId },
           properties: {
-            '청구서제목': { title: [{ type: 'text', text: { content: `${currentMonth} ${name} 수강료` } }] },
-            '청구월':     { select: { name: currentMonth } },
-            '기본수강료': { number: tuition },
-            '결제방식':   { select: { name: '카드결제' } },
-            '입금확인':   { checkbox: false },
-            '연결된학생': { relation: [{ id: s.id }] },
+            '청구서제목':       { title: [{ type: 'text', text: { content: `${currentMonth} ${name} 수강료` } }] },
+            '청구월':           { select: { name: currentMonth } },
+            '기본수강료':       { number: tuition },
+            '결제방식':         { select: { name: '카드결제' } },
+            '입금확인':         { checkbox: false },
+            '연결된학생':       { relation: [{ id: s.id }] },
+            '[시스템] ERP_시간축': { date: { start: erpDate } },  // ✅ 추가
           }
         }, token);
         results.수강료청구서++;
@@ -69,7 +71,7 @@ module.exports = async (req, res) => {
     }
   } catch(e) { results.errors.push(`학생조회: ${e.message}`); }
 
-  // ── 2단계: 고정비 마스터 DB에서 읽어오기 ──
+  // ── 2단계: 고정비 마스터 DB에서 읽어서 가계부에 자동 생성 ──
   try {
     const fixedRes = await notionRequest(
       `https://api.notion.com/v1/databases/${fixedCostDbId}/query`,
